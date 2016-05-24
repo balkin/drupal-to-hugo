@@ -24,9 +24,7 @@ foreach ($tagsList as $c) {
 	$tags[$c->tid] = $c;
 }
 
-function taxonomy_extract($what) {
-	return $what->name;
-}
+$taxonomyExtractor = function($what) { return $what->name; };
 
 $result = db_query("SELECT nid FROM {node}");
 foreach ($result as $tmp) {
@@ -44,7 +42,7 @@ foreach ($result as $tmp) {
 			array_push($hugoTags, $tags[$tag['tid']]);
 		}
 	}
-	$finalTags = array_unique(array_map(taxonomy_extract, $hugoTags));
-	$finalTopics = array_unique(array_map(taxonomy_extract, $hugoTopics));
+	$finalTags = array_unique(array_map($taxonomyExtractor, $hugoTags));
+	$finalTopics = array_unique(array_map($taxonomyExtractor, $hugoTopics));
 	printf("%5d. %s %s\n       T: %s\n       C: %s\n", $tmp->nid, $node->title, $url, implode(', ', $finalTags), implode(', ', $finalTopics));
 }
