@@ -116,6 +116,7 @@ class HugoExporter {
 		$catString = implode(',', array_map($quoteLambda, $page->getTopics()));
 		$tagsString = implode(',', array_map($quoteLambda, $page->getTags()));
 		$node = $page->getNode();
+		$typeString = $node->type == 'blog' ? 'post' : 'page';
 		$dateString = date('c', $node->created);
 		$changedString = date('c', $node->changed);
 $meta = <<<EOF
@@ -126,6 +127,7 @@ changed = "$changedString"
 description = ""
 tags = [$tagsString]
 title = "$title"
+type = "$typeString"
 
 +++
 
