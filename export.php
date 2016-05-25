@@ -1,4 +1,14 @@
 <?php
+if (file_exists( $_SERVER['HOME'] . '/gocode')) {
+	@define('HUGO_PATH',  $_SERVER['HOME'] . '/gocode/bin/hugo');
+}
+elseif (file_exists( $_SERVER['HOME'] . '/go')) {
+	@define('HUGO_PATH',  $_SERVER['HOME'] . '/go/bin/hugo');
+}
+else {
+	@define('HUGO_PATH', 'hugo');
+}
+
 $_SERVER['REMOTE_ADDR'] = '';
 if (file_exists('includes/bootstrap.inc')) {
 	define('DRUPAL_ROOT', getcwd());
@@ -125,3 +135,6 @@ foreach ($result as $tmp) {
 	echo $page;
 	$exporter->exportPage($page);
 }
+
+chdir(DRUPAL_ROOT . DIRECTORY_SEPARATOR . 'hugo');
+system(HUGO_PATH);
