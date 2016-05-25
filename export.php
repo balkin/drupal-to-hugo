@@ -57,6 +57,7 @@ class DrupalTaxonomy {
 
 class HugoPage {
 	private $url;
+	private $path;
 	private $node;
 	private $tags;
 	private $topics;
@@ -66,17 +67,19 @@ class HugoPage {
 		$this->url = urldecode(url(drupal_get_path_alias('node/' . $node->nid)));
 		$this->tags = array_unique($tags);
 		$this->topics = array_unique($topics);
-		$this->aliases = array('node/'.$node->nid, $this->url);
+		$this->aliases = array('node/'.$node->nid);
 		if (preg_match('#\.html$#', $this->url)) {
-			$this->url = str_replace('.html', '', $this->url);
-			$this->aliases[] = $this->url;
+			$this->path = str_replace('.html', '', $this->url);
+			$this->aliases[] = $this->path;
 		}
 	}
 	function getURL() { return $this->url; }
+	function getPath() { return $this->path; }
 	function getTitle() { return $this->node->title; }
 	function getTopics() { return $this->topics; }
 	function getTags() { return $this->tags; }
 	function getNode() { return $this->node; }
+	function getAliases() { return $this->aliases; }
 	function getSummary() {
 		$options = array('label'=>'hidden', 'type' => 'text_summary_or_trimmed', 'settings'=>array('trim_length' => 220));
 		$f = field_view_field('node', $this->node, 'body', $options);
@@ -115,6 +118,7 @@ class HugoExporter {
 		$quoteLambda = function($x) { return '"' . $x . '"'; };
 		$catString = implode(',', array_map($quoteLambda, $page->getTopics()));
 		$tagsString = implode(',', array_map($quoteLambda, $page->getTags()));
+		$aliasesString = implode(',', array_map($quoteLambda, $page->getAliases()));
 		$node = $page->getNode();
 		$typeString = $node->type == 'blog' ? 'post' : 'page';
 		$dateString = date('c', $node->created);
@@ -128,6 +132,8 @@ description = ""
 tags = [$tagsString]
 title = "$title"
 type = "$typeString"
+url = "{$page->getURL()}"
+aliases = [$aliasesString]
 
 +++
 
@@ -136,11 +142,11 @@ EOF;
 	}
 
 	public function exportPage(HugoPage $page) {
-		$dp = strrpos($page->getURL(), '/');
+		$dp = strrpos($page->getPath(), '/');
 		if ($dp !== FALSE) {
-			$sd = substr($page->getURL(), 0, $dp);
+			$sd = substr($page->getPath(), 0, $dp);
 			$d = $this->getPath('content', $sd);
-			$fd = substr($page->getURL(), $dp+1);
+			$fd = substr($page->getPath(), $dp+1);
 			mkdir($d, 0755, TRUE);
 			$localPath = 'content' . DIRECTORY_SEPARATOR . $sd;
 			$f = $this->getPath($localPath, $fd . '.html');
