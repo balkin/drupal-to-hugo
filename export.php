@@ -49,7 +49,7 @@ class HugoPage {
 	private $topics;
 	function __construct($node, $tags, $topics) {
 		$this->node = $node;
-		$this->url = url(drupal_get_path_alias('node/' . $node->nid));
+		$this->url = urldecode(url(drupal_get_path_alias('node/' . $node->nid)));
 		$this->tags = array_unique($tags);
 		$this->topics = array_unique($topics);
 	}
