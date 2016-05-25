@@ -73,6 +73,10 @@ class HugoPage {
 		}
 	}
 	function getURL() { return $this->url; }
+	function getTitle() { return $this->node->title; }
+	function getTopics() { return $this->topics; }
+	function getTags() { return $this->tags; }
+	function getNode() { return $this->node; }
 	function getBody() {
 		foreach ($this->node->body as $language => $body) {
 			return $body[0]['value'];
@@ -102,6 +106,29 @@ class HugoExporter {
 		return str_replace("\n\n", "\n", str_replace('</p>', "</p>\n", $body));
 	}
 
+	public function prepareMetadata(HugoPage $page) {
+		$title = addcslashes($page->getTitle(), '"');
+		$quoteLambda = function($x) { return '"' . $x . '"'; };
+		$catString = implode(',', array_map($quoteLambda, $page->getTopics()));
+		$tagsString = implode(',', array_map($quoteLambda, $page->getTags()));
+		$node = $page->getNode();
+		$dateString = date('c', $node->created);
+		$changedString = date('c', $node->changed);
+$meta = <<<EOF
++++
+categories = [$catString]
+date = "$dateString"
+changed = "$changedString"
+description = ""
+tags = [$tagsString]
+title = "$title"
+
++++
+
+EOF;
+		return $meta;
+	}
+
 	public function exportPage(HugoPage $page) {
 		$dp = strrpos($page->getURL(), '/');
 		if ($dp !== FALSE) {
@@ -112,7 +139,8 @@ class HugoExporter {
 			$localPath = 'content' . DIRECTORY_SEPARATOR . $sd;
 			$f = $this->getPath($localPath, $fd . '.html');
 			$body = $this->beautifyParagraphs($page->getBody());
-			file_put_contents($f, $body);
+			$meta = $this->prepareMetadata($page);
+			file_put_contents($f, $meta . $body);
 		}
 	}
 }
