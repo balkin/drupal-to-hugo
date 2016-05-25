@@ -77,10 +77,14 @@ class HugoPage {
 	function getTopics() { return $this->topics; }
 	function getTags() { return $this->tags; }
 	function getNode() { return $this->node; }
+	function getSummary() {
+		$options = array('label'=>'hidden', 'type' => 'text_summary_or_trimmed', 'settings'=>array('trim_length' => 220));
+		$f = field_view_field('node', $this->node, 'body', $options);
+		return render($f);
+	}
 	function getBody() {
-		foreach ($this->node->body as $language => $body) {
-			return $body[0]['value'];
-		}
+		$f = field_view_field('node', $this->node, 'body', array('label'=>'hidden'));
+		return render($f);
 	}
 	function __toString() {
 		return sprintf("%5d. %s %s\n       T: %s\n       C: %s\n       A: %s\n", $this->node->nid, $this->node->title, $this->url, 
