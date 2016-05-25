@@ -1,10 +1,13 @@
 <?php
 $_SERVER['REMOTE_ADDR'] = '';
 if (file_exists('includes/bootstrap.inc')) {
-define('DRUPAL_ROOT', getcwd());
+	define('DRUPAL_ROOT', getcwd());
 }
 elseif (file_exists('../includes/bootstrap.inc')) {
-define('DRUPAL_ROOT', dirname('..'));
+	define('DRUPAL_ROOT', dirname('..'));
+}
+else {
+	define('DRUPAL_ROOT', dirname(__FILE__));
 }
 
 require_once DRUPAL_ROOT . '/includes/bootstrap.inc';
