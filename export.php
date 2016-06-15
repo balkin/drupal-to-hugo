@@ -20,6 +20,12 @@ else {
 	define('DRUPAL_ROOT', dirname(__FILE__));
 }
 
+function myUrlEncode($string) {
+    $entities = array('%21', '%2A', '%27', '%28', '%29', '%3B', '%3A', '%40', '%26', '%3D', '%2B', '%24', '%2C', '%2F', '%3F', '%25', '%23', '%5B', '%5D');
+    $replacements = array('!', '*', "'", "(", ")", ";", ":", "@", "&", "=", "+", "$", ",", "/", "?", "%", "#", "[", "]");
+    return str_replace($entities, $replacements, urlencode($string));
+}
+
 require_once DRUPAL_ROOT . '/includes/bootstrap.inc';
 drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
 module_load_include('module', 'field');
@@ -28,6 +34,7 @@ $GLOBALS['base_path'] = '';
 
 error_reporting(E_ALL);
 chdir(DRUPAL_ROOT);
+setlocale(LC_ALL, 'ru_RU.UTF8', 'ru_RU.UTF-8', 'ru_RU.utf8');
 
 class DrupalTaxonomy {
 	private $categories = array();
@@ -62,24 +69,59 @@ class HugoPage {
 	private $tags;
 	private $topics;
 	private $aliases;
+	private $rewrite = array();
 	function __construct($node, $tags, $topics) {
 		$this->node = $node;
+		$this->aliases = array('node/'.$node->nid);
 		$this->url = urldecode(url(drupal_get_path_alias('node/' . $node->nid)));
+		$sanitized = $this->sanitize($this->url);
+		if ($this->url != $sanitized) {
+			$this->aliases[] = $this->url;
+			$this->rewrite['/'.myUrlEncode($this->url)] = '/' . $sanitized;
+			if (substr($this->url, -1) != '/' && substr($this->url, -4) != 'html') {
+				$this->rewrite['/'.myUrlEncode($this->url) . '/'] = '/' . $sanitized;
+			}
+			$this->url = $sanitized;
+		}
 		$this->tags = array_unique($tags);
 		$this->topics = array_unique($topics);
-		$this->aliases = array('node/'.$node->nid);
 		if (preg_match('#\.html$#', $this->url)) {
 			$this->path = str_replace('.html', '', $this->url);
 			$this->aliases[] = $this->path;
+		} else {
+			$this->path = $this->url;
 		}
 	}
-	function getURL() { return $this->url; }
+	function sanitize($s) {
+		$out = '';
+		for ($i = 0; $i < mb_strlen($s); $i++) {
+			$ch = mb_substr($s, $i, 1);
+			if (ctype_alnum($ch) || ctype_alpha($ch) || preg_match('#\p{Lu}#', $ch) || preg_match('#\p{Lt}#', $ch) ||
+				$ch == '/' || $ch == '.' || $ch == ',' || $ch == '-' || $ch == '_') {
+				$out .= $ch;
+			}
+		}
+		return $out;
+	}
+	function endsWith($haystack, $needle) {
+	    $length = strlen($needle);
+	    if ($length == 0) {
+	        return true;
+	    }
+	    return (substr($haystack, -$length) === $needle);
+	}
+
+	function getURL() { 
+		if ($this->endsWith($this->url, '.html')) return $this->url;
+		return $this->url . '/';
+	}
 	function getPath() { return $this->path; }
 	function getTitle() { return $this->node->title; }
 	function getTopics() { return $this->topics; }
 	function getTags() { return $this->tags; }
 	function getNode() { return $this->node; }
 	function getAliases() { return $this->aliases; }
+	function getRewrite() { return $this->rewrite; }
 	function getSummary() {
 		$options = array('label'=>'hidden', 'type' => 'text_summary_or_trimmed', 'settings'=>array('trim_length' => 220));
 		$f = field_view_field('node', $this->node, 'body', $options);
@@ -141,6 +183,8 @@ EOF;
 		return $meta;
 	}
 
+	private $rewrites = array();
+
 	public function exportPage(HugoPage $page) {
 		$dp = strrpos($page->getPath(), '/');
 		if ($dp !== FALSE) {
@@ -153,6 +197,15 @@ EOF;
 			$body = $this->beautifyParagraphs($page->getBody());
 			$meta = $this->prepareMetadata($page);
 			file_put_contents($f, $meta . $body);
+		}
+		foreach ($page->getRewrite() as $from => $to) {
+			$this->rewrites[] = "$from $to;\n";
+		}
+	}
+
+	public function exportRewrites() {
+		if (count($this->rewrites)) {
+			file_put_contents( $this->path . DIRECTORY_SEPARATOR . 'rewrite.map', implode('', $this->rewrites) );
 		}
 	}
 }
@@ -175,6 +228,7 @@ foreach ($result as $tmp) {
 	echo $page;
 	$exporter->exportPage($page);
 }
+$exporter->exportRewrites();
 
 chdir(DRUPAL_ROOT . DIRECTORY_SEPARATOR . 'hugo');
 system(HUGO_PATH);
