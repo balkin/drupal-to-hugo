@@ -21,9 +21,9 @@ else {
 }
 
 function myUrlEncode($string) {
-    $entities = array('%21', '%2A', '%27', '%28', '%29', '%3B', '%3A', '%40', '%26', '%3D', '%2B', '%24', '%2C', '%2F', '%3F', '%25', '%23', '%5B', '%5D');
-    $replacements = array('!', '*', "'", "(", ")", ";", ":", "@", "&", "=", "+", "$", ",", "/", "?", "%", "#", "[", "]");
-    return str_replace($entities, $replacements, urlencode($string));
+	$entities = array('%21', '%2A', '%27', '%28', '%29', '%3B', '%3A', '%40', '%26', '%3D', '%2B', '%24', '%2C', '%2F', '%3F', '%25', '%23', '%5B', '%5D', ';');
+	$replacements = array('!', '*', "'", "(", ")", ";", ":", "@", "&", "=", "+", "$", ",", "/", "?", "%", "#", "[", "]", "\\;");
+	return str_replace($entities, $replacements, urlencode($string));
 }
 
 require_once DRUPAL_ROOT . '/includes/bootstrap.inc';
@@ -72,8 +72,9 @@ class HugoPage {
 	private $rewrite = array();
 	function __construct($node, $tags, $topics) {
 		$this->node = $node;
-		$this->aliases = array('node/'.$node->nid);
-		$this->url = urldecode(url(drupal_get_path_alias('node/' . $node->nid)));
+		$source = 'node/' . $node->nid;
+		$this->aliases = array($source);
+		$this->url = urldecode(url(drupal_get_path_alias($source)));
 		$sanitized = $this->sanitize($this->url);
 		if ($this->url != $sanitized) {
 			$this->aliases[] = $this->url;
@@ -82,6 +83,12 @@ class HugoPage {
 				$this->rewrite['/'.myUrlEncode($this->url) . '/'] = '/' . $sanitized;
 			}
 			$this->url = $sanitized;
+		}
+		$urls2 = db_query("SELECT * FROM {url_alias} WHERE source = '$source'");
+		foreach ($urls2 as $row) {
+			if ($row->alias != $sanitized) {
+				$this->rewrite['/' . myUrlEncode($row->alias)] = '/' . $sanitized;
+			}
 		}
 		$this->tags = array_unique($tags);
 		$this->topics = array_unique($topics);
@@ -205,6 +212,7 @@ EOF;
 
 	public function exportRewrites() {
 		if (count($this->rewrites)) {
+			$this->rewrites[] = "/rss.xml /index.xml;";
 			file_put_contents( $this->path . DIRECTORY_SEPARATOR . 'rewrite.map', implode('', $this->rewrites) );
 		}
 	}
